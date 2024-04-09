@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Edge Detection</title>
+<style>
+    #video-container {
+        display: flex;
+        align-items: center;
+    }
+
+    video {
+        max-width: 50%;
+    }
+
+    canvas {
+        max-width: 50%;
+    }
+</style>
+</head>
+<body>
+<div id="video-container">
+    <video id="my-video" controls>
+        <source src="Ghibli.mp4" type="video/mp4">
+    </video>
+    <canvas id="my-canvas" width="640" height="360"></canvas>
+</div>
+
+<script>
+    // Lấy video và canvas
+    var video = document.getElementById('my-video');
+    var canvas = document.getElementById('my-canvas');
+    var ctx = canvas.getContext('2d');
+
+    // Khi video được tải hoàn thành, vẽ biên cạnh lên canvas
+    video.addEventListener('loadedmetadata', function() {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        drawEdges();
+    });
+
+    // Vẽ biên cạnh của video lên canvas
+    function drawEdges() {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Lấy dữ liệu hình ảnh từ canvas
+        var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        // Chuyển đổi ảnh sang grayscale
+        var grayscale = applyGrayscale(imageData);
+
+        // Tìm biên cạnh bằng thuật toán Laplace
+        var laplacian = applyLaplacian(grayscale);
+
+        // Đặt dữ liệu biên cạnh lên canvas
+        ctx.putImageData(laplacian, 0, 0);
+
+        // Lặp lại quá trình vẽ sau mỗi khoảng thời gian
+        requestAnimationFrame(drawEdges);
+    }
+
+    // Chuyển đổi ảnh sang grayscale
+    function applyGrayscale(imageData) {
+        var data = imageData.data;
+        for (var i = 0; i < data.length; i += 4) {
+            var avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+            data[i]     = avg; // Red
+            data[i + 1] = avg; // Green
+            data[i + 2] = avg; // Blue
+        }
+        return imageData;
+    }
+
+    // Tìm biên cạnh bằng thuật toán Laplace
+    function applyLaplacian(imageData) {
+        var data = imageData.data;
+        var width = imageData.width;
+        var height = imageData.height;
+        var outputData = new Uint8ClampedArray(data.length);
+
+        for (var y = 1; y < height - 1; y++) {
+            for (var x = 1; x < width - 1; x++) {
+                var sum = 0;
+                sum += -1 * data[((y - 1) * width + (x - 1)) * 4]; // Top left
+                sum += -1 * data[((y - 1) * width + x) * 4]; // Top
+                sum += -1 * data[((y - 1) * width + (x + 1)) * 4]; // Top right
+                sum += -1 * data[(y * width + (x - 1)) * 4]; // Left
+                sum += 8 * data[(y * width + x) * 4]; // Center
+                sum += -1 * data[(y * width + (x + 1)) * 4]; // Right
+                sum += -1 * data[((y + 1) * width + (x - 1)) * 4]; // Bottom left
+                sum += -1 * data[((y + 1) * width + x) * 4]; // Bottom
+                sum += -1 * data[((y + 1) * width + (x + 1)) * 4]; // Bottom right
+                sum = Math.min(Math.max(sum, 0), 255); // Clamp the result
+                outputData[(y * width + x) * 4] = sum;
+                outputData[(y * width + x) * 4 + 1] = sum;
+                outputData[(y * width + x) * 4 + 2] = sum;
+                outputData[(y * width + x) * 4 + 3] = 255; // Alpha
+            }
+        }
+
+        return new ImageData(outputData, width, height);
+    }
+</script>
+<h1>MSSV: 21120425</h1>
+<h1>Họ và tên: Hứa Phúc Đăng</h1>
+</body>
+</html>
